@@ -1,0 +1,18 @@
+{
+  "name": "agentflame",
+  "version": "0.1.0",
+  "description": "Tails Claude Code / agent JSONL transcripts and serves a live flame graph dashboard of tool calls, token spend, and per-turn latency.",
+  "type": "module",
+  "main": "src/parser.js",
+  "bin": {
+    "agentflame-parse": "bin/parse.js"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {}
+}
