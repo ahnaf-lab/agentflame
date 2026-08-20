@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Watches a directory of Claude Code / agent JSONL transcripts and serves
-// the combined, canonical event timeline over HTTP as versioned JSON. The
-// browser dashboard that renders this (flame graph, spend, latency) is a
-// later milestone; this one is the daemon + endpoint it will read from.
+// both the combined, canonical event timeline (as versioned JSON) and a
+// live browser dashboard that polls it: a flame graph of tool calls plus
+// running token spend and per-turn latency stats.
 
 import { Tailer } from '../src/tailer.js';
 import { startServer } from '../src/server.js';
@@ -22,7 +22,7 @@ tailer.scan();
 const server = await startServer(tailer, { port });
 const address = server.address();
 console.log(
-  `agentflame watching ${dirPath} -> http://127.0.0.1:${address.port}/api/v1/timeline`
+  `agentflame watching ${dirPath} -> http://127.0.0.1:${address.port}/`
 );
 
 const interval = setInterval(() => tailer.scan(), POLL_MS);

@@ -3,7 +3,17 @@
 // any input from the request that reaches the filesystem or a shell.
 
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { renderFlameSVG } from './flame.js';
+
+// Static assets for the live dashboard page. Read once at startup - both
+// are small, fixed, source-controlled files, never user input, so there is
+// no path to traverse and no benefit to re-reading them per request.
+const ASSET_DIR = dirname(fileURLToPath(import.meta.url));
+const DASHBOARD_HTML = readFileSync(join(ASSET_DIR, 'index.html'), 'utf8');
+const DASHBOARD_JS = readFileSync(join(ASSET_DIR, 'dashboard.js'), 'utf8');
 
 /** Merge every tracked session's timeline into one time-ordered list of
  * events, for endpoints (like the flame graph) that render across the
@@ -29,6 +39,18 @@ export function createApp(tailer) {
     } catch {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'bad request' }));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(DASHBOARD_HTML);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/dashboard.js') {
+      res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' });
+      res.end(DASHBOARD_JS);
       return;
     }
 

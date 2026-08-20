@@ -5,14 +5,24 @@ written and serves a live browser dashboard: a flame graph of tool calls,
 running token spend, and per-turn latency. Built for watching an agent run
 happen in real time instead of reading a scrollback log after the fact.
 
-This milestone adds a static SVG flame graph render of a timeline's tool
-calls: one row for the main chain, one row for sidechain (sub-agent) calls,
-bar position from wall-clock start time, bar width from duration, and color
-from outcome (green ok, red failed, grey still pending). Rendering is pure
-and deterministic - no timestamps or randomness of its own - which is what
-lets the test suite assert on the exact SVG bytes rather than just "it
-rendered something". The interactive browser dashboard (live-updating view,
-spend and latency charts) is a later milestone and is not implemented yet.
+This milestone adds a live browser dashboard: a page served at `/` that
+polls the timeline endpoint on an interval, redraws a stats bar (sessions,
+tool call counts by outcome, token spend, latency) and re-fetches the flame
+graph whenever the tailer's `version` counter changes, and otherwise leaves
+the screen untouched. The poll/redraw logic (`src/dashboard.js`) is a pure
+function of the JSON it's given - no DOM APIs, no timers, no `fetch` of its
+own - so the exact same module runs in the browser (served byte-for-byte at
+`/dashboard.js`) and in the test suite, which drives it with a scripted
+sequence of fixture responses and asserts the output is byte-identical
+whenever nothing changed and updates correctly when it did.
+
+A separate, earlier milestone renders the flame graph itself: a static SVG
+of a timeline's tool calls, one row for the main chain, one row for
+sidechain (sub-agent) calls, bar position from wall-clock start time, bar
+width from duration, and color from outcome (green ok, red failed, grey
+still pending). Rendering is pure and deterministic - no timestamps or
+randomness of its own - which is what lets the test suite assert on the
+exact SVG bytes rather than just "it rendered something".
 
 Two real quirks the parser exists to handle:
 
@@ -65,6 +75,10 @@ This starts a daemon that polls the directory for `*.jsonl` files, reading
 only the bytes appended since the last poll (never re-parsing a whole
 transcript from scratch), and serves the combined result:
 
+- `GET /` — the live dashboard: a stats bar plus the flame graph, redrawn
+  in the browser once per second by polling the endpoints below.
+- `GET /dashboard.js` — the dashboard's client-side module, served as-is
+  from `src/dashboard.js` (see below).
 - `GET /api/v1/timeline` — every tracked session's canonical timeline and
   summed token usage, plus a `version` counter that increments each time
   new data is read. Poll this and compare `version` instead of diffing the
@@ -76,6 +90,23 @@ transcript from scratch), and serves the combined result:
 The `v1` in the path is the endpoint's own version: the response shape can
 grow new fields freely, but a breaking change gets a `v2` path rather than
 changing `v1` under existing clients.
+
+Open `http://127.0.0.1:<port>/` in a browser to watch an agent run live.
+
+### The dashboard's poll/redraw loop
+
+`src/dashboard.js` has no dependency on Node or a real DOM: `computeStats`
+reduces a `/api/v1/timeline` body to plain numbers, `renderStatsHTML` turns
+those numbers into markup, and `createDashboard` wires a `fetchTimeline` /
+`fetchFlame` pair to a `statsMount` / `flameMount` pair (anything with an
+`innerHTML` property) and exposes a single `poll()` that redraws only when
+the tailer's `version` has moved. `src/index.html` imports this module
+directly as a browser ES module - there is no build step and no bundler -
+and `test/dashboard.test.js` imports the same file and drives it with a
+scripted sequence of fixture responses to assert the redraw is
+deterministic: identical input produces byte-identical markup, an
+unchanged version is a no-op, and a changed version updates both the stats
+bar and the flame graph.
 
 ### Rendering a flame graph directly
 

@@ -85,6 +85,45 @@ test('GET /api/v1/health reports ok', async () => {
   }
 });
 
+test('GET / serves the dashboard HTML page', async () => {
+  const dir = makeTempDir();
+  let server;
+  try {
+    const tailer = new Tailer(dir);
+    server = await startServer(tailer, { port: 0 });
+    const { port } = server.address();
+
+    const res = await fetch(`http://127.0.0.1:${port}/`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /text\/html/);
+    const body = await res.text();
+    assert.match(body, /<div id="stats">/);
+    assert.match(body, /dashboard\.js/);
+  } finally {
+    await closeServer(server);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('GET /dashboard.js serves the client module as JavaScript', async () => {
+  const dir = makeTempDir();
+  let server;
+  try {
+    const tailer = new Tailer(dir);
+    server = await startServer(tailer, { port: 0 });
+    const { port } = server.address();
+
+    const res = await fetch(`http://127.0.0.1:${port}/dashboard.js`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /javascript/);
+    const body = await res.text();
+    assert.match(body, /export function createDashboard/);
+  } finally {
+    await closeServer(server);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('unknown routes return 404 with a JSON body', async () => {
   const dir = makeTempDir();
   let server;
