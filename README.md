@@ -5,9 +5,10 @@ written and serves a live browser dashboard: a flame graph of tool calls,
 running token spend, and per-turn latency. Built for watching an agent run
 happen in real time instead of reading a scrollback log after the fact.
 
-This milestone ships the trace parser: it turns a raw transcript JSONL file
-into a canonical, deduped event timeline. The live-tailing daemon and the
-dashboard itself are later milestones and are not implemented yet.
+This milestone adds the watch + serve daemon: it tails a directory of
+transcript files and exposes the combined, canonical timeline over HTTP as
+versioned JSON. The browser dashboard itself (the flame graph, live spend
+and latency views) is a later milestone and is not implemented yet.
 
 Two real quirks the parser exists to handle:
 
@@ -49,6 +50,26 @@ node bin/parse.js path/to/transcript.jsonl
 This prints the parsed timeline as JSON: an ordered list of `message` and
 `tool_call` events, where each `tool_call` carries its linked output,
 `durationMs`, and success flag once its result has been seen.
+
+### Watching a directory and serving it over HTTP
+
+```
+node bin/serve.js path/to/transcripts-dir [port]
+```
+
+This starts a daemon that polls the directory for `*.jsonl` files, reading
+only the bytes appended since the last poll (never re-parsing a whole
+transcript from scratch), and serves the combined result:
+
+- `GET /api/v1/timeline` — every tracked session's canonical timeline and
+  summed token usage, plus a `version` counter that increments each time
+  new data is read. Poll this and compare `version` instead of diffing the
+  body.
+- `GET /api/v1/health` — `{"status":"ok"}`, for liveness checks.
+
+The `v1` in the path is the endpoint's own version: the response shape can
+grow new fields freely, but a breaking change gets a `v2` path rather than
+changing `v1` under existing clients.
 
 ## Status
 

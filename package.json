@@ -5,7 +5,8 @@
   "type": "module",
   "main": "src/parser.js",
   "bin": {
-    "agentflame-parse": "bin/parse.js"
+    "agentflame-parse": "bin/parse.js",
+    "agentflame-serve": "bin/serve.js"
   },
   "scripts": {
     "test": "node --test test/"
