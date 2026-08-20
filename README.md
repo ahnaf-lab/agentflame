@@ -69,6 +69,7 @@ This prints the parsed timeline as JSON: an ordered list of `message` and
 
 ```
 node bin/serve.js path/to/transcripts-dir [port]
+node bin/serve.js --config path/to/agentflame.json
 ```
 
 This starts a daemon that polls the directory for `*.jsonl` files, reading
@@ -92,6 +93,40 @@ grow new fields freely, but a breaking change gets a `v2` path rather than
 changing `v1` under existing clients.
 
 Open `http://127.0.0.1:<port>/` in a browser to watch an agent run live.
+
+### Config file
+
+Settings can also come from a JSON file instead of CLI args, resolved in
+`src/config.js`:
+
+```json
+{
+  "dir": "/path/to/transcripts-dir",
+  "port": 4317,
+  "pollMs": 500,
+  "pattern": "\\.jsonl$"
+}
+```
+
+```
+node bin/serve.js --config path/to/agentflame.json
+```
+
+Precedence is defaults, then the config file, then positional CLI args - so
+`node bin/serve.js --config agentflame.json /other/dir` watches `/other/dir`
+even if the file says otherwise. `pattern` is a string compiled into a
+`RegExp` used to select which files in the directory are tailed.
+
+### Shutdown
+
+`bin/serve.js` treats `SIGINT`/`SIGTERM` as a request to drain, not a signal
+to ignore: it stops polling, stops accepting new connections, closes idle
+keep-alive sockets, and exits `0` once the server has fully closed. If a
+client holds a connection open past 5 seconds, remaining sockets are
+force-closed and the process exits `1` rather than hanging indefinitely.
+Startup fails fast (nonzero exit, message on stderr) if the watched
+directory doesn't exist or the port can't be bound, rather than starting a
+daemon that silently does nothing.
 
 ### The dashboard's poll/redraw loop
 
