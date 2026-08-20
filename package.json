@@ -6,7 +6,8 @@
   "main": "src/parser.js",
   "bin": {
     "agentflame-parse": "bin/parse.js",
-    "agentflame-serve": "bin/serve.js"
+    "agentflame-serve": "bin/serve.js",
+    "agentflame-flame": "bin/flame.js"
   },
   "scripts": {
     "test": "node --test test/"

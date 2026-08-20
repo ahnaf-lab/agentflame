@@ -5,10 +5,14 @@ written and serves a live browser dashboard: a flame graph of tool calls,
 running token spend, and per-turn latency. Built for watching an agent run
 happen in real time instead of reading a scrollback log after the fact.
 
-This milestone adds the watch + serve daemon: it tails a directory of
-transcript files and exposes the combined, canonical timeline over HTTP as
-versioned JSON. The browser dashboard itself (the flame graph, live spend
-and latency views) is a later milestone and is not implemented yet.
+This milestone adds a static SVG flame graph render of a timeline's tool
+calls: one row for the main chain, one row for sidechain (sub-agent) calls,
+bar position from wall-clock start time, bar width from duration, and color
+from outcome (green ok, red failed, grey still pending). Rendering is pure
+and deterministic - no timestamps or randomness of its own - which is what
+lets the test suite assert on the exact SVG bytes rather than just "it
+rendered something". The interactive browser dashboard (live-updating view,
+spend and latency charts) is a later milestone and is not implemented yet.
 
 Two real quirks the parser exists to handle:
 
@@ -65,11 +69,27 @@ transcript from scratch), and serves the combined result:
   summed token usage, plus a `version` counter that increments each time
   new data is read. Poll this and compare `version` instead of diffing the
   body.
+- `GET /api/v1/flame.svg` — a static SVG flame graph (`image/svg+xml`) of
+  every tracked session's tool calls, merged into one time-ordered view.
 - `GET /api/v1/health` — `{"status":"ok"}`, for liveness checks.
 
 The `v1` in the path is the endpoint's own version: the response shape can
 grow new fields freely, but a breaking change gets a `v2` path rather than
 changing `v1` under existing clients.
+
+### Rendering a flame graph directly
+
+```
+node bin/flame.js path/to/transcript.jsonl > flame.svg
+```
+
+Renders the same flame graph the server endpoint produces, without needing
+a running daemon — useful for previewing a single transcript. Only
+`tool_call` events with a resolvable timestamp are drawn; each bar's x
+position is its start time relative to the first tool call, its width is
+duration (or a small minimum for near-instant / still-pending calls), its
+row is 0 for the main chain and 1 for sidechain (sub-agent) calls, and its
+color reflects outcome: green succeeded, red failed, grey still pending.
 
 ## Status
 

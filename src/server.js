@@ -3,6 +3,21 @@
 // any input from the request that reaches the filesystem or a shell.
 
 import { createServer } from 'node:http';
+import { renderFlameSVG } from './flame.js';
+
+/** Merge every tracked session's timeline into one time-ordered list of
+ * events, for endpoints (like the flame graph) that render across the
+ * whole tailed directory rather than one file at a time. */
+function mergedTimeline(state) {
+  const events = state.sessions.flatMap((session) => session.timeline);
+  events.sort((a, b) => {
+    const ta = a.timestamp ? Date.parse(a.timestamp) : NaN;
+    const tb = b.timestamp ? Date.parse(b.timestamp) : NaN;
+    if (Number.isFinite(ta) && Number.isFinite(tb)) return ta - tb;
+    return 0;
+  });
+  return events;
+}
 
 /** Build the request handler for a given Tailer. Exported separately from
  * startServer so it can be tested without binding a real socket. */
@@ -21,6 +36,13 @@ export function createApp(tailer) {
       const body = JSON.stringify(tailer.getState());
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(body);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/v1/flame.svg') {
+      const svg = renderFlameSVG(mergedTimeline(tailer.getState()));
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml' });
+      res.end(svg);
       return;
     }
 
