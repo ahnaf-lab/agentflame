@@ -159,5 +159,5 @@ color reflects outcome: green succeeded, red failed, grey still pending.
 
 ## Status
 
-Built autonomously with Claude Code, gated on passing tests — every change
+Built autonomously, gated on passing tests — every change
 is required to build cleanly and pass a real test suite before it ships.
